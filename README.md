@@ -19,6 +19,11 @@ Una aplicación Flutter para llevar un registro de sentimientos como parte de un
 
 - **Widget Reutilizable**: El wizard está implementado como un widget independiente que puede ser reutilizado
 
+- **Widget de Pantalla de Inicio (Android)**: Widget para la pantalla de inicio de Android que permite:
+  - Acceso rápido para crear nuevos registros
+  - Visualización del último registro guardado
+  - Actualización automática cuando se crean/editan/eliminan registros
+
 ## Estructura del Proyecto
 
 ```
@@ -29,7 +34,8 @@ lib/
 ├── database/
 │   └── database_helper.dart    # Helper para SQLite
 ├── utils/
-│   └── sentimientos.dart       # Lista de sentimientos de "El Emocionario"
+│   ├── sentimientos.dart       # Lista de sentimientos de "El Emocionario"
+│   └── widget_helper.dart      # Helper para actualizar el widget de pantalla de inicio
 ├── widgets/
 │   └── registro_wizard.dart    # Widget del wizard (REUTILIZABLE)
 └── screens/
@@ -50,6 +56,17 @@ lib/
 1. Clona el repositorio
 2. Ejecuta `flutter pub get` para instalar las dependencias
 3. Ejecuta `flutter run` para iniciar la aplicación
+
+### Instalación del Widget de Pantalla de Inicio (Android)
+
+1. Una vez instalada la app en tu dispositivo Android, mantén presionado en un espacio vacío de la pantalla de inicio
+2. Selecciona "Widgets" del menú
+3. Busca "Registros de Sentimiento"
+4. Arrastra el widget a tu pantalla de inicio
+5. El widget mostrará:
+   - Botón "Nuevo Registro" que abre la app directamente en el wizard
+   - Información del último registro guardado
+6. El widget se actualiza automáticamente cada vez que creas, editas o eliminas un registro
 
 ### Uso del Widget Wizard
 
@@ -80,6 +97,7 @@ RegistroWizard(
 - `path_provider`: Acceso a rutas del sistema de archivos
 - `path`: Manipulación de rutas
 - `intl`: Formateo de fechas
+- `home_widget`: Soporte para widgets de pantalla de inicio en Android/iOS
 
 ## Licencia
 

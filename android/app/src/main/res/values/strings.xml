@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Registros de Sentimiento</string>
+    <string name="widget_description">Acceso rápido para crear nuevos registros de sentimiento</string>
+</resources>

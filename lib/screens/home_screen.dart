@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../widgets/registro_wizard.dart';
 import 'list_screen.dart';
 
@@ -12,6 +13,26 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   final GlobalKey<_HomeScreenState> _wizardKey = GlobalKey();
+  static const platform = MethodChannel('com.registros.sentimiento/widget');
+
+  @override
+  void initState() {
+    super.initState();
+    _checkForWidgetLaunch();
+  }
+
+  Future<void> _checkForWidgetLaunch() async {
+    try {
+      final String? action = await platform.invokeMethod('getInitialAction');
+      if (action == 'OPEN_NEW_REGISTRO') {
+        setState(() {
+          _currentIndex = 0; // Switch to wizard tab
+        });
+      }
+    } catch (e) {
+      print('Error checking widget launch: $e');
+    }
+  }
 
   void _onTabChanged(int index) {
     setState(() {

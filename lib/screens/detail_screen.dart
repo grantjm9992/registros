@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../models/registro.dart';
 import '../database/database_helper.dart';
 import '../widgets/registro_wizard.dart';
+import '../utils/widget_helper.dart';
 
 class DetailScreen extends StatefulWidget {
   final Registro registro;
@@ -203,6 +204,10 @@ class _DetailScreenState extends State<DetailScreen> {
 
     if (confirmed == true) {
       await DatabaseHelper.instance.deleteRegistro(widget.registro.id!);
+
+      // Update home screen widget
+      await WidgetHelper.updateWidget();
+
       if (mounted) {
         Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(

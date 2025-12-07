@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/registro.dart';
 import '../database/database_helper.dart';
 import '../utils/sentimientos.dart';
+import '../utils/widget_helper.dart';
 
 class RegistroWizard extends StatefulWidget {
   final Registro? existingRegistro;
@@ -131,6 +132,9 @@ class _RegistroWizardState extends State<RegistroWizard> {
     } else {
       await DatabaseHelper.instance.createRegistro(registro);
     }
+
+    // Update home screen widget
+    await WidgetHelper.updateWidget();
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
