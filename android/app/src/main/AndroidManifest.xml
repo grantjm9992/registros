@@ -4,7 +4,8 @@
     <application
         android:label="Registros de Sentimiento"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@drawable/ic_launcher_legacy"
+        android:roundIcon="@mipmap/ic_launcher">
 
         <activity
             android:name=".MainActivity"
