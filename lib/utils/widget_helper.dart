@@ -12,7 +12,7 @@ class WidgetHelper {
       if (registros.isNotEmpty) {
         final lastRegistro = registros.first;
         final dateFormat = DateFormat('dd/MM HH:mm');
-        lastRegistroText = 'Último: ${lastRegistro.sentimiento} - ${dateFormat.format(lastRegistro.createdAt)}';
+        lastRegistroText = 'Último: ${lastRegistro.sentimientosDisplay} - ${dateFormat.format(lastRegistro.createdAt)}';
       }
 
       // Save data to widget

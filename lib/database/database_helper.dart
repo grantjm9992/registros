@@ -20,8 +20,9 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _createDB,
+      onUpgrade: _upgradeDB,
     );
   }
 
@@ -30,7 +31,7 @@ class DatabaseHelper {
       CREATE TABLE registros (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         motivo TEXT NOT NULL,
-        sentimiento TEXT NOT NULL,
+        sentimientos TEXT NOT NULL,
         pensamiento TEXT NOT NULL,
         comportamiento TEXT NOT NULL,
         consecuencia TEXT NOT NULL,
@@ -44,6 +45,31 @@ class DatabaseHelper {
         nombre TEXT NOT NULL UNIQUE
       )
     ''');
+  }
+
+  Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Migrate from single sentimiento to multiple sentimientos
+      // Rename column and convert data format
+      await db.execute('ALTER TABLE registros RENAME COLUMN sentimiento TO sentimientos');
+
+      // Update existing records to wrap single sentimiento in JSON array
+      final records = await db.query('registros');
+      for (var record in records) {
+        final id = record['id'];
+        final oldSentimiento = record['sentimientos'] as String;
+        // Wrap in JSON array if not already
+        if (!oldSentimiento.startsWith('[')) {
+          final newSentimientos = '["$oldSentimiento"]';
+          await db.update(
+            'registros',
+            {'sentimientos': newSentimientos},
+            where: 'id = ?',
+            whereArgs: [id],
+          );
+        }
+      }
+    }
   }
 
   // CRUD operations for Registro

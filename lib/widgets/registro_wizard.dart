@@ -29,7 +29,7 @@ class _RegistroWizardState extends State<RegistroWizard> {
   final TextEditingController _consecuenciaController = TextEditingController();
   final TextEditingController _sentimientoSearchController = TextEditingController();
 
-  String? _selectedSentimiento;
+  Set<String> _selectedSentimientos = {};
   List<String> _allSentimientos = [];
   List<String> _filteredSentimientos = [];
 
@@ -40,8 +40,7 @@ class _RegistroWizardState extends State<RegistroWizard> {
 
     if (widget.existingRegistro != null) {
       _motivoController.text = widget.existingRegistro!.motivo;
-      _selectedSentimiento = widget.existingRegistro!.sentimiento;
-      _sentimientoSearchController.text = widget.existingRegistro!.sentimiento;
+      _selectedSentimientos = widget.existingRegistro!.sentimientos.toSet();
       _pensamientoController.text = widget.existingRegistro!.pensamiento;
       _comportamientoController.text = widget.existingRegistro!.comportamiento;
       _consecuenciaController.text = widget.existingRegistro!.consecuencia;
@@ -107,7 +106,7 @@ class _RegistroWizardState extends State<RegistroWizard> {
   Future<void> _saveRegistro() async {
     // Validar que todos los campos estén llenos
     if (_motivoController.text.isEmpty ||
-        _selectedSentimiento == null ||
+        _selectedSentimientos.isEmpty ||
         _pensamientoController.text.isEmpty ||
         _comportamientoController.text.isEmpty ||
         _consecuenciaController.text.isEmpty) {
@@ -120,7 +119,7 @@ class _RegistroWizardState extends State<RegistroWizard> {
     final registro = Registro(
       id: widget.existingRegistro?.id,
       motivo: _motivoController.text,
-      sentimiento: _selectedSentimiento!,
+      sentimientos: _selectedSentimientos.toList(),
       pensamiento: _pensamientoController.text,
       comportamiento: _comportamientoController.text,
       consecuencia: _consecuenciaController.text,
@@ -148,7 +147,7 @@ class _RegistroWizardState extends State<RegistroWizard> {
       _consecuenciaController.clear();
       _sentimientoSearchController.clear();
       setState(() {
-        _selectedSentimiento = null;
+        _selectedSentimientos.clear();
         _currentStep = 0;
       });
       _pageController.jumpToPage(0);
@@ -162,7 +161,7 @@ class _RegistroWizardState extends State<RegistroWizard> {
       case 0:
         return _motivoController.text.isNotEmpty;
       case 1:
-        return _selectedSentimiento != null;
+        return _selectedSentimientos.isNotEmpty;
       case 2:
         return _pensamientoController.text.isNotEmpty;
       case 3:
@@ -263,8 +262,8 @@ class _RegistroWizardState extends State<RegistroWizard> {
 
   Widget _buildSentimientoStep() {
     return _buildStepContainer(
-      title: 'Sentimiento',
-      description: '¿Qué sentimiento experimentaste?',
+      title: 'Sentimientos',
+      description: 'Selecciona uno o más sentimientos que experimentaste',
       child: Column(
         children: [
           TextField(
@@ -281,7 +280,8 @@ class _RegistroWizardState extends State<RegistroWizard> {
                         await DatabaseHelper.instance.addCustomSentimiento(newSentimiento);
                         await _loadSentimientos();
                         setState(() {
-                          _selectedSentimiento = newSentimiento;
+                          _selectedSentimientos.add(newSentimiento);
+                          _sentimientoSearchController.clear();
                         });
                       },
                       tooltip: 'Añadir nuevo sentimiento',
@@ -290,6 +290,7 @@ class _RegistroWizardState extends State<RegistroWizard> {
             ),
             onChanged: (value) {
               _filterSentimientos(value);
+              setState(() {});
             },
           ),
           const SizedBox(height: 16),
@@ -303,17 +304,19 @@ class _RegistroWizardState extends State<RegistroWizard> {
                 itemCount: _filteredSentimientos.length,
                 itemBuilder: (context, index) {
                   final sentimiento = _filteredSentimientos[index];
-                  final isSelected = sentimiento == _selectedSentimiento;
+                  final isSelected = _selectedSentimientos.contains(sentimiento);
 
-                  return ListTile(
+                  return CheckboxListTile(
                     title: Text(sentimiento),
-                    selected: isSelected,
-                    selectedTileColor: Theme.of(context).primaryColor.withOpacity(0.1),
-                    trailing: isSelected ? const Icon(Icons.check_circle) : null,
-                    onTap: () {
+                    value: isSelected,
+                    activeColor: Theme.of(context).primaryColor,
+                    onChanged: (bool? value) {
                       setState(() {
-                        _selectedSentimiento = sentimiento;
-                        _sentimientoSearchController.text = sentimiento;
+                        if (value == true) {
+                          _selectedSentimientos.add(sentimiento);
+                        } else {
+                          _selectedSentimientos.remove(sentimiento);
+                        }
                       });
                     },
                   );
@@ -321,15 +324,22 @@ class _RegistroWizardState extends State<RegistroWizard> {
               ),
             ),
           ),
-          if (_selectedSentimiento != null)
+          if (_selectedSentimientos.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 8.0),
-              child: Text(
-                'Seleccionado: $_selectedSentimiento',
-                style: TextStyle(
-                  color: Theme.of(context).primaryColor,
-                  fontWeight: FontWeight.bold,
-                ),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: _selectedSentimientos.map((s) => Chip(
+                  label: Text(s),
+                  backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
+                  deleteIcon: const Icon(Icons.close, size: 18),
+                  onDeleted: () {
+                    setState(() {
+                      _selectedSentimientos.remove(s);
+                    });
+                  },
+                )).toList(),
               ),
             ),
         ],

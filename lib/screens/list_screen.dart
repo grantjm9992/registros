@@ -121,7 +121,7 @@ class _ListScreenState extends State<ListScreen> {
                 children: [
                   Expanded(
                     child: Text(
-                      registro.sentimiento,
+                      registro.sentimientosDisplay,
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
