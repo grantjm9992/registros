@@ -37,13 +37,6 @@ class _RegistroWizardState extends State<RegistroWizard> {
   @override
   void initState() {
     super.initState();
-    // Initialize immediately with predefined list
-    _allSentimientos = [...sentimientosEmocionario];
-    _filteredSentimientos = [...sentimientosEmocionario];
-    _sentimientosLoaded = true;
-
-    // Then load custom ones
-    _loadSentimientos();
 
     if (widget.existingRegistro != null) {
       _motivoController.text = widget.existingRegistro!.motivo;
@@ -52,6 +45,17 @@ class _RegistroWizardState extends State<RegistroWizard> {
       _comportamientoController.text = widget.existingRegistro!.comportamiento;
       _consecuenciaController.text = widget.existingRegistro!.consecuencia;
     }
+
+    // Initialize with predefined list and trigger rebuild
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      setState(() {
+        _allSentimientos = [...sentimientosEmocionario];
+        _filteredSentimientos = [...sentimientosEmocionario];
+        _sentimientosLoaded = true;
+      });
+      // Then load custom ones
+      _loadSentimientos();
+    });
   }
 
   Future<void> _loadSentimientos() async {
@@ -280,11 +284,11 @@ class _RegistroWizardState extends State<RegistroWizard> {
               hintText: 'Buscar o añadir sentimiento...',
               border: const OutlineInputBorder(),
               suffixIcon: _sentimientoSearchController.text.isNotEmpty &&
-                      !_allSentimientos.contains(_sentimientoSearchController.text)
+                      !_allSentimientos.contains(_sentimientoSearchController.text.toLowerCase())
                   ? IconButton(
                       icon: const Icon(Icons.add_circle),
                       onPressed: () async {
-                        final newSentimiento = _sentimientoSearchController.text;
+                        final newSentimiento = _sentimientoSearchController.text.toLowerCase();
                         await DatabaseHelper.instance.addCustomSentimiento(newSentimiento);
                         await _loadSentimientos();
                         setState(() {
@@ -303,45 +307,7 @@ class _RegistroWizardState extends State<RegistroWizard> {
           ),
           const SizedBox(height: 12),
 
-          // Selected chips section - constrained height
-          if (_selectedSentimientos.isNotEmpty)
-            Container(
-              constraints: const BoxConstraints(maxHeight: 100),
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: Theme.of(context).primaryColor.withOpacity(0.3),
-                ),
-              ),
-              child: SingleChildScrollView(
-                child: Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: _selectedSentimientos.map((s) => Chip(
-                    label: Text(
-                      s,
-                      style: const TextStyle(fontSize: 13),
-                    ),
-                    backgroundColor: Theme.of(context).primaryColor.withOpacity(0.15),
-                    deleteIcon: const Icon(Icons.close, size: 16),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    onDeleted: () {
-                      setState(() {
-                        _selectedSentimientos.remove(s);
-                      });
-                    },
-                  )).toList(),
-                ),
-              ),
-            ),
-
-          if (_selectedSentimientos.isNotEmpty)
-            const SizedBox(height: 12),
-
-          // Checkbox list - takes remaining space
+          // Checkbox list - takes most space
           Expanded(
             child: Container(
               decoration: BoxDecoration(
@@ -349,8 +315,23 @@ class _RegistroWizardState extends State<RegistroWizard> {
                 borderRadius: BorderRadius.circular(4),
               ),
               child: _filteredSentimientos.isEmpty
-                  ? const Center(
-                      child: Text('No se encontraron sentimientos'),
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.sentiment_neutral, size: 48, color: Colors.grey),
+                          const SizedBox(height: 16),
+                          const Text('No se encontraron sentimientos'),
+                          if (_sentimientoSearchController.text.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(
+                                'Toca + para añadir "${_sentimientoSearchController.text}"',
+                                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                              ),
+                            ),
+                        ],
+                      ),
                     )
                   : ListView.builder(
                       itemCount: _filteredSentimientos.length,
@@ -377,6 +358,59 @@ class _RegistroWizardState extends State<RegistroWizard> {
                     ),
             ),
           ),
+
+          // Selected chips section - at the bottom
+          if (_selectedSentimientos.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 80),
+              width: double.infinity,
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Theme.of(context).primaryColor.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Seleccionados (${_selectedSentimientos.length}):',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).primaryColor,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: _selectedSentimientos.map((s) => Chip(
+                          label: Text(
+                            s,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          backgroundColor: Theme.of(context).primaryColor.withOpacity(0.2),
+                          deleteIcon: const Icon(Icons.close, size: 14),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          visualDensity: VisualDensity.compact,
+                          onDeleted: () {
+                            setState(() {
+                              _selectedSentimientos.remove(s);
+                            });
+                          },
+                        )).toList(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
