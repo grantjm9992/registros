@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:multi_select_flutter/multi_select_flutter.dart';
 import '../models/registro.dart';
 import '../database/database_helper.dart';
 import '../utils/sentimientos.dart';
@@ -27,12 +28,9 @@ class _RegistroWizardState extends State<RegistroWizard> {
   final TextEditingController _pensamientoController = TextEditingController();
   final TextEditingController _comportamientoController = TextEditingController();
   final TextEditingController _consecuenciaController = TextEditingController();
-  final TextEditingController _sentimientoSearchController = TextEditingController();
 
-  Set<String> _selectedSentimientos = {};
-  List<String> _allSentimientos = [];
-  List<String> _filteredSentimientos = [];
-  bool _sentimientosLoaded = false;
+  List<String> _selectedSentimientos = [];
+  List<MultiSelectItem<String>> _sentimientoItems = [];
 
   @override
   void initState() {
@@ -40,42 +38,24 @@ class _RegistroWizardState extends State<RegistroWizard> {
 
     if (widget.existingRegistro != null) {
       _motivoController.text = widget.existingRegistro!.motivo;
-      _selectedSentimientos = widget.existingRegistro!.sentimientos.toSet();
+      _selectedSentimientos = widget.existingRegistro!.sentimientos;
       _pensamientoController.text = widget.existingRegistro!.pensamiento;
       _comportamientoController.text = widget.existingRegistro!.comportamiento;
       _consecuenciaController.text = widget.existingRegistro!.consecuencia;
     }
 
-    // Initialize with predefined list and trigger rebuild
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      setState(() {
-        _allSentimientos = [...sentimientosEmocionario];
-        _filteredSentimientos = [...sentimientosEmocionario];
-        _sentimientosLoaded = true;
-      });
-      // Then load custom ones
-      _loadSentimientos();
-    });
+    _loadSentimientos();
   }
 
   Future<void> _loadSentimientos() async {
     final customSentimientos = await DatabaseHelper.instance.getCustomSentimientos();
-    setState(() {
-      _allSentimientos = [...sentimientosEmocionario, ...customSentimientos];
-      _allSentimientos.sort();
-      _filteredSentimientos = _allSentimientos;
-    });
-  }
+    final allSentimientos = [...sentimientosEmocionario, ...customSentimientos];
+    allSentimientos.sort();
 
-  void _filterSentimientos(String query) {
     setState(() {
-      if (query.isEmpty) {
-        _filteredSentimientos = _allSentimientos;
-      } else {
-        _filteredSentimientos = _allSentimientos
-            .where((s) => s.toLowerCase().contains(query.toLowerCase()))
-            .toList();
-      }
+      _sentimientoItems = allSentimientos
+          .map((s) => MultiSelectItem<String>(s, s))
+          .toList();
     });
   }
 
@@ -86,7 +66,6 @@ class _RegistroWizardState extends State<RegistroWizard> {
     _pensamientoController.dispose();
     _comportamientoController.dispose();
     _consecuenciaController.dispose();
-    _sentimientoSearchController.dispose();
     super.dispose();
   }
 
@@ -130,7 +109,7 @@ class _RegistroWizardState extends State<RegistroWizard> {
     final registro = Registro(
       id: widget.existingRegistro?.id,
       motivo: _motivoController.text,
-      sentimientos: _selectedSentimientos.toList(),
+      sentimientos: _selectedSentimientos,
       pensamiento: _pensamientoController.text,
       comportamiento: _comportamientoController.text,
       consecuencia: _consecuenciaController.text,
@@ -156,9 +135,8 @@ class _RegistroWizardState extends State<RegistroWizard> {
       _pensamientoController.clear();
       _comportamientoController.clear();
       _consecuenciaController.clear();
-      _sentimientoSearchController.clear();
       setState(() {
-        _selectedSentimientos.clear();
+        _selectedSentimientos = [];
         _currentStep = 0;
       });
       _pageController.jumpToPage(0);
@@ -276,141 +254,135 @@ class _RegistroWizardState extends State<RegistroWizard> {
       title: 'Sentimientos',
       description: 'Selecciona uno o más sentimientos que experimentaste',
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Search field
-          TextField(
-            controller: _sentimientoSearchController,
-            decoration: InputDecoration(
-              hintText: 'Buscar o añadir sentimiento...',
-              border: const OutlineInputBorder(),
-              suffixIcon: _sentimientoSearchController.text.isNotEmpty &&
-                      !_allSentimientos.contains(_sentimientoSearchController.text.toLowerCase())
-                  ? IconButton(
-                      icon: const Icon(Icons.add_circle),
-                      onPressed: () async {
-                        final newSentimiento = _sentimientoSearchController.text.toLowerCase();
-                        await DatabaseHelper.instance.addCustomSentimiento(newSentimiento);
-                        await _loadSentimientos();
-                        setState(() {
-                          _selectedSentimientos.add(newSentimiento);
-                          _sentimientoSearchController.clear();
-                        });
-                      },
-                      tooltip: 'Añadir nuevo sentimiento',
-                    )
-                  : null,
+          // Multi-select field with search
+          MultiSelectDialogField<String>(
+            items: _sentimientoItems,
+            title: const Text('Sentimientos'),
+            selectedColor: Theme.of(context).primaryColor,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(
+                color: Colors.grey[400]!,
+                width: 1,
+              ),
             ),
-            onChanged: (value) {
-              _filterSentimientos(value);
-              setState(() {});
+            buttonIcon: const Icon(Icons.arrow_drop_down),
+            buttonText: Text(
+              _selectedSentimientos.isEmpty
+                  ? 'Selecciona sentimientos...'
+                  : '${_selectedSentimientos.length} seleccionados',
+              style: TextStyle(
+                color: _selectedSentimientos.isEmpty ? Colors.grey[600] : Colors.black87,
+                fontSize: 16,
+              ),
+            ),
+            searchable: true,
+            searchHint: 'Buscar sentimientos...',
+            confirmText: const Text('CONFIRMAR'),
+            cancelText: const Text('CANCELAR'),
+            initialValue: _selectedSentimientos,
+            onConfirm: (values) {
+              setState(() {
+                _selectedSentimientos = values;
+              });
             },
-          ),
-          const SizedBox(height: 12),
-
-          // Checkbox list - takes most space
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey[300]!),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: _filteredSentimientos.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.sentiment_neutral, size: 48, color: Colors.grey),
-                          const SizedBox(height: 16),
-                          const Text('No se encontraron sentimientos'),
-                          if (_sentimientoSearchController.text.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Text(
-                                'Toca + para añadir "${_sentimientoSearchController.text}"',
-                                style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                              ),
-                            ),
-                        ],
-                      ),
-                    )
-                  : ListView.builder(
-                      itemCount: _filteredSentimientos.length,
-                      itemBuilder: (context, index) {
-                        final sentimiento = _filteredSentimientos[index];
-                        final isSelected = _selectedSentimientos.contains(sentimiento);
-
-                        return CheckboxListTile(
-                          title: Text(sentimiento),
-                          value: isSelected,
-                          activeColor: Theme.of(context).primaryColor,
-                          dense: true,
-                          onChanged: (bool? value) {
-                            setState(() {
-                              if (value == true) {
-                                _selectedSentimientos.add(sentimiento);
-                              } else {
-                                _selectedSentimientos.remove(sentimiento);
-                              }
-                            });
-                          },
-                        );
-                      },
-                    ),
+            chipDisplay: MultiSelectChipDisplay<String>(
+              onTap: (value) {
+                setState(() {
+                  _selectedSentimientos.remove(value);
+                });
+              },
+              chipColor: Theme.of(context).primaryColor.withOpacity(0.2),
+              textStyle: const TextStyle(color: Colors.black87),
             ),
           ),
 
-          // Selected chips section - at the bottom
-          if (_selectedSentimientos.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Container(
-              constraints: const BoxConstraints(maxHeight: 80),
-              width: double.infinity,
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Seleccionados (${_selectedSentimientos.length}):',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).primaryColor,
+          const SizedBox(height: 16),
+
+          // Option to add custom sentimiento
+          OutlinedButton.icon(
+            onPressed: () async {
+              final controller = TextEditingController();
+              final result = await showDialog<String>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Añadir sentimiento personalizado'),
+                  content: TextField(
+                    controller: controller,
+                    decoration: const InputDecoration(
+                      hintText: 'Escribe el sentimiento...',
+                      border: OutlineInputBorder(),
                     ),
+                    textCapitalization: TextCapitalization.none,
+                    autofocus: true,
                   ),
-                  const SizedBox(height: 4),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('CANCELAR'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        if (controller.text.trim().isNotEmpty) {
+                          Navigator.pop(context, controller.text.trim().toLowerCase());
+                        }
+                      },
+                      child: const Text('AÑADIR'),
+                    ),
+                  ],
+                ),
+              );
+
+              if (result != null) {
+                // Check if it already exists
+                final exists = _sentimientoItems.any((item) => item.value == result);
+                if (exists) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Este sentimiento ya existe')),
+                    );
+                  }
+                } else {
+                  // Add to database and reload
+                  await DatabaseHelper.instance.addCustomSentimiento(result);
+                  await _loadSentimientos();
+                  setState(() {
+                    _selectedSentimientos.add(result);
+                  });
+                }
+              }
+            },
+            icon: const Icon(Icons.add),
+            label: const Text('Añadir sentimiento personalizado'),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Info text
+          if (_selectedSentimientos.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue[200]!),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.blue[700], size: 20),
+                  const SizedBox(width: 8),
                   Expanded(
-                    child: SingleChildScrollView(
-                      child: Wrap(
-                        spacing: 6,
-                        runSpacing: 4,
-                        children: _selectedSentimientos.map((s) => Chip(
-                          label: Text(
-                            s,
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                          backgroundColor: Theme.of(context).primaryColor.withOpacity(0.2),
-                          deleteIcon: const Icon(Icons.close, size: 14),
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          visualDensity: VisualDensity.compact,
-                          onDeleted: () {
-                            setState(() {
-                              _selectedSentimientos.remove(s);
-                            });
-                          },
-                        )).toList(),
-                      ),
+                    child: Text(
+                      'Toca el campo de arriba para seleccionar uno o más sentimientos',
+                      style: TextStyle(color: Colors.blue[900], fontSize: 13),
                     ),
                   ),
                 ],
               ),
             ),
-          ],
         ],
       ),
     );
