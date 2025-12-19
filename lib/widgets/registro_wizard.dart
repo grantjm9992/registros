@@ -32,10 +32,17 @@ class _RegistroWizardState extends State<RegistroWizard> {
   Set<String> _selectedSentimientos = {};
   List<String> _allSentimientos = [];
   List<String> _filteredSentimientos = [];
+  bool _sentimientosLoaded = false;
 
   @override
   void initState() {
     super.initState();
+    // Initialize immediately with predefined list
+    _allSentimientos = [...sentimientosEmocionario];
+    _filteredSentimientos = [...sentimientosEmocionario];
+    _sentimientosLoaded = true;
+
+    // Then load custom ones
     _loadSentimientos();
 
     if (widget.existingRegistro != null) {
@@ -266,6 +273,7 @@ class _RegistroWizardState extends State<RegistroWizard> {
       description: 'Selecciona uno o más sentimientos que experimentaste',
       child: Column(
         children: [
+          // Search field
           TextField(
             controller: _sentimientoSearchController,
             decoration: InputDecoration(
@@ -293,55 +301,82 @@ class _RegistroWizardState extends State<RegistroWizard> {
               setState(() {});
             },
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+
+          // Selected chips section - constrained height
+          if (_selectedSentimientos.isNotEmpty)
+            Container(
+              constraints: const BoxConstraints(maxHeight: 100),
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+              decoration: BoxDecoration(
+                color: Theme.of(context).primaryColor.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Theme.of(context).primaryColor.withOpacity(0.3),
+                ),
+              ),
+              child: SingleChildScrollView(
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: _selectedSentimientos.map((s) => Chip(
+                    label: Text(
+                      s,
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                    backgroundColor: Theme.of(context).primaryColor.withOpacity(0.15),
+                    deleteIcon: const Icon(Icons.close, size: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    onDeleted: () {
+                      setState(() {
+                        _selectedSentimientos.remove(s);
+                      });
+                    },
+                  )).toList(),
+                ),
+              ),
+            ),
+
+          if (_selectedSentimientos.isNotEmpty)
+            const SizedBox(height: 12),
+
+          // Checkbox list - takes remaining space
           Expanded(
             child: Container(
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.grey[300]!),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: ListView.builder(
-                itemCount: _filteredSentimientos.length,
-                itemBuilder: (context, index) {
-                  final sentimiento = _filteredSentimientos[index];
-                  final isSelected = _selectedSentimientos.contains(sentimiento);
+              child: _filteredSentimientos.isEmpty
+                  ? const Center(
+                      child: Text('No se encontraron sentimientos'),
+                    )
+                  : ListView.builder(
+                      itemCount: _filteredSentimientos.length,
+                      itemBuilder: (context, index) {
+                        final sentimiento = _filteredSentimientos[index];
+                        final isSelected = _selectedSentimientos.contains(sentimiento);
 
-                  return CheckboxListTile(
-                    title: Text(sentimiento),
-                    value: isSelected,
-                    activeColor: Theme.of(context).primaryColor,
-                    onChanged: (bool? value) {
-                      setState(() {
-                        if (value == true) {
-                          _selectedSentimientos.add(sentimiento);
-                        } else {
-                          _selectedSentimientos.remove(sentimiento);
-                        }
-                      });
-                    },
-                  );
-                },
-              ),
+                        return CheckboxListTile(
+                          title: Text(sentimiento),
+                          value: isSelected,
+                          activeColor: Theme.of(context).primaryColor,
+                          dense: true,
+                          onChanged: (bool? value) {
+                            setState(() {
+                              if (value == true) {
+                                _selectedSentimientos.add(sentimiento);
+                              } else {
+                                _selectedSentimientos.remove(sentimiento);
+                              }
+                            });
+                          },
+                        );
+                      },
+                    ),
             ),
           ),
-          if (_selectedSentimientos.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 8.0),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: _selectedSentimientos.map((s) => Chip(
-                  label: Text(s),
-                  backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
-                  deleteIcon: const Icon(Icons.close, size: 18),
-                  onDeleted: () {
-                    setState(() {
-                      _selectedSentimientos.remove(s);
-                    });
-                  },
-                )).toList(),
-              ),
-            ),
         ],
       ),
     );
